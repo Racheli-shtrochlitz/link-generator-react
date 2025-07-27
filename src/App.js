@@ -18,24 +18,52 @@ function App() {
     setError('');
     setDownloadUrl('');
     const f = e.target.files[0];
-    if (!f) return;
+    if (!f) {
+      console.log('No file selected.');
+      return;
+    }
     setFile(f);
     setOriginalFileName(f.name);
+    console.log('Selected file:', f.name);
+  
     const reader = new FileReader();
+  
     reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const ws = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      if (json.length === 0) {
-        setError('הקובץ ריק או לא תקין.');
-        return;
+      try {
+        const result = evt.target.result;
+        console.log('FileReader result type:', typeof result);
+        const data = new Uint8Array(result);
+        console.log('Parsed Uint8Array from file:', data.slice(0, 10));
+  
+        const workbook = XLSX.read(data, { type: 'array' });
+        console.log('Workbook parsed:', workbook);
+  
+        const ws = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  
+        if (json.length === 0) {
+          setError('הקובץ ריק או לא תקין.');
+          console.warn('Empty or invalid file.');
+          return;
+        }
+  
+        console.log('First row (columns):', json[0]);
+        setColumns(json[0]);
+        setSheetData(json);
+      } catch (err) {
+        console.error('Error while reading Excel file:', err);
+        setError('שגיאה בקריאת הקובץ: ' + err.message);
       }
-      setColumns(json[0]);
-      setSheetData(json);
     };
+  
+    reader.onerror = (err) => {
+      console.error('FileReader failed:', err);
+      setError('שגיאה בקריאת הקובץ.');
+    };
+  
     reader.readAsArrayBuffer(f);
   };
+  
 
   const handleGenerate = () => {
     setError('');
