@@ -15,6 +15,8 @@ function App() {
   const [downloadUrl, setDownloadUrl] = useState('');
 
   const handleFileUpload = (e) => {
+    console.log('XLSX Version:', XLSX.version);
+    
     setError('');
     setDownloadUrl('');
     const f = e.target.files[0];
