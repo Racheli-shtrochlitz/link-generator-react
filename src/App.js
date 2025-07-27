@@ -18,43 +18,63 @@ function App() {
     setError('');
     setDownloadUrl('');
     const f = e.target.files[0];
+  
     if (!f) {
-      console.log('No file selected.');
+      console.warn('❗ לא נבחר קובץ');
       return;
     }
+  
+    if (!(f instanceof Blob)) {
+      setError('הקובץ אינו תקין (לא Blob)');
+      return;
+    }
+  
+    if (!f.name.endsWith('.xlsx') && !f.name.endsWith('.xls')) {
+      setError('נא לבחור קובץ Excel בלבד (סיומת .xlsx או .xls)');
+      return;
+    }
+  
     setFile(f);
     setOriginalFileName(f.name);
-    console.log('Selected file:', f.name);
-
+    console.log('📄 קובץ שנבחר:', f.name, '| גודל:', f.size, '| סוג:', f.type);
+  
     const reader = new FileReader();
-
+  
     reader.onload = (evt) => {
-      console.log('FileReader result type:', typeof evt.target.result, evt.target.result);
       try {
-        console.log('Before XLSX.read');
-        const data = new Uint8Array(evt.target.result);
+        const result = evt.target.result;
+        console.log('📥 FileReader הצליח, אורך buffer:', result.byteLength);
+  
+        const data = new Uint8Array(result);
         const workbook = XLSX.read(data, { type: 'array' });
-        console.log('After XLSX.read');
+  
+        console.log('📊 Excel workbook נטען, גיליון ראשון:', workbook.SheetNames[0]);
+  
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
-        if (json.length === 0) {
-          setError('Empty or invalid file.');
+  
+        if (!json || json.length === 0) {
+          setError('הקובץ ריק או לא תקין.');
           return;
         }
+  
         setColumns(json[0]);
         setSheetData(json);
+        console.log('✅ Excel נטען בהצלחה, כותרות:', json[0]);
       } catch (e) {
-        setError('Error while reading Excel file: ' + e.message);
+        console.error('❌ שגיאה ב־XLSX.read:', e);
+        setError('שגיאה בעת קריאת קובץ ה־Excel: ' + e.message);
       }
     };
-
+  
     reader.onerror = (err) => {
-      console.error('FileReader failed:', err);
+      console.error('❌ FileReader נכשל:', err);
       setError('שגיאה בקריאת הקובץ.');
     };
-
-    reader.readAsArrayBuffer(f);
+  
+    reader.readAsArrayBuffer(f); // הכי חשוב - לא readAsBinaryString
   };
+  
 
 
   const handleGenerate = () => {
