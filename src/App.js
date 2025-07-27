@@ -29,32 +29,21 @@ function App() {
     const reader = new FileReader();
   
     reader.onload = (evt) => {
+      console.log('FileReader result type:', typeof evt.target.result, evt.target.result);
       try {
-        const result = evt.target.result;
-        console.log('FileReader result type:', typeof result);
-        const data = new Uint8Array(result);
-        console.log('Parsed Uint8Array from file:', data.slice(0, 10));
-  
-        const workbook = XLSX.read(data, { type: 'array' });
-        console.log('Workbook parsed:', workbook);
-  
+        const workbook = XLSX.read(evt.target.result, { type: 'array' });
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
-  
         if (json.length === 0) {
-          setError('הקובץ ריק או לא תקין.');
-          console.warn('Empty or invalid file.');
+          setError('Empty or invalid file.');
           return;
         }
-  
-        console.log('First row (columns):', json[0]);
         setColumns(json[0]);
         setSheetData(json);
-      } catch (err) {
-        console.error('Error while reading Excel file:', err);
-        setError('שגיאה בקריאת הקובץ: ' + err.message);
+      } catch (e) {
+        setError('Error while reading Excel file: ' + e.message);
       }
-    };
+    };    
   
     reader.onerror = (err) => {
       console.error('FileReader failed:', err);
