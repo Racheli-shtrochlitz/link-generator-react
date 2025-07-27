@@ -31,7 +31,9 @@ function App() {
     reader.onload = (evt) => {
       console.log('FileReader result type:', typeof evt.target.result, evt.target.result);
       try {
-        const workbook = XLSX.read(evt.target.result, { type: 'array' });
+        console.log('Before XLSX.read');
+        const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+        console.log('After XLSX.read');
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
         if (json.length === 0) {
