@@ -25,14 +25,15 @@ function App() {
     setFile(f);
     setOriginalFileName(f.name);
     console.log('Selected file:', f.name);
-  
+
     const reader = new FileReader();
-  
+
     reader.onload = (evt) => {
       console.log('FileReader result type:', typeof evt.target.result, evt.target.result);
       try {
         console.log('Before XLSX.read');
-        const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
         console.log('After XLSX.read');
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
@@ -45,16 +46,16 @@ function App() {
       } catch (e) {
         setError('Error while reading Excel file: ' + e.message);
       }
-    };    
-  
+    };
+
     reader.onerror = (err) => {
       console.error('FileReader failed:', err);
       setError('שגיאה בקריאת הקובץ.');
     };
-  
+
     reader.readAsArrayBuffer(f);
   };
-  
+
 
   const handleGenerate = () => {
     setError('');
@@ -63,51 +64,51 @@ function App() {
       setError('אנא מלא את כל השדות.');
       return;
     }
-  
+
     setLoading(true);
     setTimeout(() => {
       try {
         const totalCols = columns.length;
         const colIdxFolder = totalCols - 1 - columns.indexOf(folderCol);
         const colIdxFile = totalCols - 1 - columns.indexOf(fileCol);
-  
+
         if (colIdxFolder === -1 || colIdxFile === -1) {
           setError('בחירת עמודות לא תקינה.');
           setLoading(false);
           return;
         }
-  
+
         const newData = sheetData.map(row => [...row].reverse());
-  
+
         const ws = XLSX.utils.aoa_to_sheet(newData);
-  
+
         for (let i = 1; i < newData.length; i++) {
           const row = newData[i];
           if (!row[colIdxFolder] || !row[colIdxFile]) continue;
-  
-          const folderName = row[colIdxFolder];          
-          const fullFolderPath = `קלסר ${folderName}`;    
+
+          const folderName = row[colIdxFolder];
+          const fullFolderPath = `קלסר ${folderName}`;
           let filename = row[colIdxFile];
           let fullFileName = filename;
           fullFileName = `${folderName}${filename}`;
-  
+
           if (!/\.[a-zA-Z0-9]+$/.test(filename)) {
-            fullFileName +='.pdf';
+            fullFileName += '.pdf';
           }
-  
+
           const link = `file://${rootPath.replace(/\\/g, '/')}/${fullFolderPath}/${fullFileName}`;
-  
+
           const cellAddr = XLSX.utils.encode_cell({ r: i, c: colIdxFile });
-  
+
           if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: filename };
           ws[cellAddr].l = { Target: link };
         }
-  
+
         ws['!sheetViews'] = [{ rightToLeft: true }];
         const wb = XLSX.utils.book_new();
         wb.Workbook = { Views: [{ RTL: true }] };
         XLSX.utils.book_append_sheet(wb, ws, 'Links');
-  
+
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
@@ -118,7 +119,7 @@ function App() {
       setLoading(false);
     }, 300);
   };
-  
+
 
   const generatedFileName = originalFileName
     ? originalFileName.replace(/\.[^/.]+$/, '') + '_עם קישורים.xlsx'
@@ -135,6 +136,11 @@ function App() {
             העלאת קובץ אקסל
             <input type="file" accept=".xlsx,.xls" hidden onChange={handleFileUpload} />
           </Button>
+          {originalFileName && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              קובץ נבחר: {originalFileName}
+            </Typography>
+          )}
           {columns.length > 0 && (
             <>
               <FormControl fullWidth>
