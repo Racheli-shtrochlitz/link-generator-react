@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Container, Typography, Box, TextField, MenuItem, Select, InputLabel, FormControl, Paper, CircularProgress, Alert } from '@mui/material';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 function App() {
   const [file, setFile] = useState(null);
@@ -14,72 +14,63 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState('');
 
-  const handleFileUpload = (e) => {
-    console.log('XLSX Version:', XLSX.version);
-    
+  const handleFileUpload = async (e) => {
     setError('');
     setDownloadUrl('');
     const f = e.target.files[0];
-  
+
     if (!f) {
       console.warn('❗ לא נבחר קובץ');
       return;
     }
-  
+
     if (!(f instanceof Blob)) {
       setError('הקובץ אינו תקין (לא Blob)');
       return;
     }
-  
+
     if (!f.name.endsWith('.xlsx') && !f.name.endsWith('.xls')) {
       setError('נא לבחור קובץ Excel בלבד (סיומת .xlsx או .xls)');
       return;
     }
-  
+
     setFile(f);
     setOriginalFileName(f.name);
     console.log('📄 קובץ שנבחר:', f.name, '| גודל:', f.size, '| סוג:', f.type);
-  
-    const reader = new FileReader();
-  
-    reader.onload = (evt) => {
-      try {
-        const result = evt.target.result;
-        console.log('📥 FileReader הצליח, אורך buffer:', result.byteLength);
-  
-        const data = new Uint8Array(result);
-        const workbook = XLSX.read(data, { type: 'array' });
-  
-        console.log('📊 Excel workbook נטען, גיליון ראשון:', workbook.SheetNames[0]);
-  
-        const ws = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
-  
-        if (!json || json.length === 0) {
-          setError('הקובץ ריק או לא תקין.');
-          return;
-        }
-  
-        setColumns(json[0]);
-        setSheetData(json);
-        console.log('✅ Excel נטען בהצלחה, כותרות:', json[0]);
-      } catch (e) {
-        console.error('❌ שגיאה ב־XLSX.read:', e);
-        setError('שגיאה בעת קריאת קובץ ה־Excel: ' + e.message);
+
+    try {
+      const arrayBuffer = await f.arrayBuffer();
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) {
+        setError('הגיליון ריק או לא נמצא.');
+        return;
       }
-    };
-  
-    reader.onerror = (err) => {
-      console.error('❌ FileReader נכשל:', err);
-      setError('שגיאה בקריאת הקובץ.');
-    };
-  
-    reader.readAsArrayBuffer(f); // הכי חשוב - לא readAsBinaryString
+
+      const json = [];
+      worksheet.eachRow((row, rowNumber) => {
+        const rowValues = row.values;
+        json.push(rowValues.slice(1));
+      });
+
+      if (json.length === 0) {
+        setError('הקובץ ריק או לא תקין.');
+        return;
+      }
+
+      setColumns(json[0]);
+      setSheetData(json);
+      console.log('✅ ExcelJS נטען בהצלחה, כותרות:', json[0]);
+    } catch (e) {
+      console.error('❌ שגיאה בקריאת הקובץ עם ExcelJS:', e);
+      setError('שגיאה בקריאת קובץ ה־Excel: ' + e.message);
+    }
   };
-  
 
-
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setError('');
     setDownloadUrl('');
     if (!file || !folderCol || !fileCol || !rootPath) {
@@ -88,7 +79,7 @@ function App() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const totalCols = columns.length;
         const colIdxFolder = totalCols - 1 - columns.indexOf(folderCol);
@@ -102,7 +93,12 @@ function App() {
 
         const newData = sheetData.map(row => [...row].reverse());
 
-        const ws = XLSX.utils.aoa_to_sheet(newData);
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Links', { properties: { tabColor: { argb: 'FFC0000' } } });
+
+        newData.forEach((row, idx) => {
+          ws.addRow(row);
+        });
 
         for (let i = 1; i < newData.length; i++) {
           const row = newData[i];
@@ -120,19 +116,19 @@ function App() {
 
           const link = `file://${rootPath.replace(/\\/g, '/')}/${fullFolderPath}/${fullFileName}`;
 
-          const cellAddr = XLSX.utils.encode_cell({ r: i, c: colIdxFile });
+          const excelRow = ws.getRow(i + 1); 
+          const cell = excelRow.getCell(colIdxFile + 1);
 
-          if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: filename };
-          ws[cellAddr].l = { Target: link };
+          cell.value = {
+            text: filename,
+            hyperlink: link,
+          };
         }
 
-        ws['!sheetViews'] = [{ rightToLeft: true }];
-        const wb = XLSX.utils.book_new();
-        wb.Workbook = { Views: [{ RTL: true }] };
-        XLSX.utils.book_append_sheet(wb, ws, 'Links');
+        ws.views = [{ rightToLeft: true }];
 
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
         setDownloadUrl(url);
       } catch (e) {
@@ -141,7 +137,6 @@ function App() {
       setLoading(false);
     }, 300);
   };
-
 
   const generatedFileName = originalFileName
     ? originalFileName.replace(/\.[^/.]+$/, '') + '_עם קישורים.xlsx'
