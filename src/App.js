@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Container, Typography, Box, TextField, MenuItem, Select, InputLabel, FormControl, Paper, CircularProgress, Alert } from '@mui/material';
 import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 function App() {
   const [file, setFile] = useState(null);
@@ -125,12 +126,12 @@ function App() {
           };
         }
 
-        // ws.views = [{ rightToLeft: true }];
+        ws.views = [{ rightToLeft: true }];
 
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        setDownloadUrl(url);
+        saveAs(blob, generatedFileName);
+
       } catch (e) {
         setError('שגיאה ביצירת הקובץ: ' + e.message);
       }
