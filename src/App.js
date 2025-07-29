@@ -120,9 +120,9 @@ function App() {
           const cell = excelRow.getCell(colIdxFile + 1);
 
           cell.value = {
-            text: filename,
-            hyperlink: link,
+            formula: `HYPERLINK("${link}", "${filename}")`,
           };
+          
         }
 
         ws.views = [{ rightToLeft: true }];
