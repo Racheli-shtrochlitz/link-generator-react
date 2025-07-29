@@ -1,29 +1,30 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Container } from '@mui/material';
 import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 function App() {
-  const [file, setFile] = useState(null);
-
-  const handleFileUpload = async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    setFile(f);
+  const handleDownload = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Sheet1');
+    ws.getCell('A1').value = 'בדיקה';
 
     try {
-      const wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(await f.arrayBuffer());
-      console.log('✅ Loaded!');
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      saveAs(blob, 'בדיקה.xlsx');
+      console.log('✅ Created & Downloaded!');
     } catch (err) {
-      console.error('❌ ExcelJS failed to load file:', err);
+      console.error('❌ יצירת קובץ נכשלה:', err);
     }
   };
 
   return (
     <Container sx={{ mt: 4 }}>
-      <Button variant="contained" component="label">
-        העלאת קובץ
-        <input type="file" hidden onChange={handleFileUpload} accept=".xlsx,.xls" />
+      <Button variant="contained" onClick={handleDownload}>
+        הורד קובץ בדיקה
       </Button>
     </Container>
   );
