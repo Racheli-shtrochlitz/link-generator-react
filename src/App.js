@@ -1,33 +1,32 @@
 import React from 'react';
-import { Button, Container } from '@mui/material';
 import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
 
-function App() {
+export default function App() {
   const handleDownload = async () => {
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Sheet1');
-    ws.getCell('A1').value = 'בדיקה';
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Sheet1');
 
-    try {
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      saveAs(blob, 'בדיקה.xlsx');
-      console.log('✅ Created & Downloaded!');
-    } catch (err) {
-      console.error('❌ יצירת קובץ נכשלה:', err);
-    }
+    worksheet.addRow(['Name', 'Age']);
+    worksheet.addRow(['Alice', 30]);
+    worksheet.addRow(['Bob', 25]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'example.xlsx';
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Button variant="contained" onClick={handleDownload}>
-        הורד קובץ בדיקה
-      </Button>
-    </Container>
+    <div style={{ padding: 20 }}>
+      <button onClick={handleDownload}>הורד קובץ Excel</button>
+    </div>
   );
 }
-
-export default App;
