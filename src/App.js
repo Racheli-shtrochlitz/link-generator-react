@@ -125,7 +125,7 @@ function App() {
           };
         }
 
-        ws.views = [{ rightToLeft: true }];
+        // ws.views = [{ rightToLeft: true }];
 
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/octet-stream' });
