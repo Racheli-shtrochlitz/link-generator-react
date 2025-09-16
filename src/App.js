@@ -81,9 +81,8 @@ function App() {
     setLoading(true);
     setTimeout(async () => {
       try {
-        const totalCols = columns.length;
-        const colIdxFolder = totalCols - 1 - columns.indexOf(folderCol);
-        const colIdxFile = totalCols - 1 - columns.indexOf(fileCol);
+        const colIdxFolder = columns.indexOf(folderCol);
+        const colIdxFile = columns.indexOf(fileCol);
 
         if (colIdxFolder === -1 || colIdxFile === -1) {
           setError('בחירת עמודות לא תקינה.');
@@ -91,7 +90,7 @@ function App() {
           return;
         }
 
-        const newData = sheetData.map(row => [...row].reverse());
+        const newData = [...sheetData];
 
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Links', { properties: { tabColor: { argb: 'FFC0000' } } });
